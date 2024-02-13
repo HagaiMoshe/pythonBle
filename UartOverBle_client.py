@@ -135,6 +135,10 @@ class BleClient_t:
 				print("failed to connect. aborting")
 				break #timeout
 
+			# enable pairing
+			#if await self.__BleClient.pair(2) is False:
+			#	await __disconnect_run()
+
 		return self.__BleClient.is_connected
 
 
@@ -212,9 +216,6 @@ class BleClient_t:
 		isConnected = loop.run_until_complete(self.__connect())
 		if isConnected is False:
 			self.__BleClient = None
-			return self
-		# if await self.__BleClient.pair(2) is False:
-		# 	await __disconnect_run()
 		return self
 
 
