@@ -72,8 +72,7 @@ class BleScan_t:
 		self.__BleDeviceName = BleDeviceName
 		self.__bleDevice = None
 		self.__deviceFoundEvent.clear()
-		scanner = bleak.BleakScanner()
-		scanner.register_detection_callback(self.__detectionCallback)
+		scanner = bleak.BleakScanner(detection_callback = self.__detectionCallback)
  
 		await scanner.start()
 		await self.__deviceFoundEvent.wait(bleScanTimeout)
@@ -187,7 +186,7 @@ class BleClient_t:
 			try:
 				await self.__BleClient.disconnect()
 				self.__BleClient = None
-				print("BLE disconnection")
+				print("\nBLE disconnection")
 			except:
 				print("cought a timeout exception") #TODO: debug the timeout exception
 
