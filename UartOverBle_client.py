@@ -9,6 +9,7 @@ from datetime import datetime
 import asyncio
 import bleak
 import inspect
+import threading
 
 
 
@@ -239,7 +240,55 @@ class BleClient_t:
 #end of class BleClient_t
 
 
+def UART_over_BLE(BleDeviceName: str, RxcharUuid: str, TxcharUuid: str):
+	_userCommand = None
+	_terminate = False
+	_lock = threading.Lock()
 
+	def userCommandThread_function(name):
+		nonlocal _userCommand
+		nonlocal _terminate
+		nonlocal _lock
+		while _terminate == False:
+			inputData = input()
+			if inputData is not None:
+				_lock.acquire()
+				_userCommand = inputData
+				_lock.release()
+			time.sleep(0.1)
+	#end of userCommandThread_function()
+
+	def start(BleDeviceName: str, RxcharUuid: str, TxcharUuid: str):
+		nonlocal _userCommand
+		nonlocal _terminate
+		nonlocal _lock
+		print(f"{datetime.now()}: start {inspect.currentframe().f_code.co_name}")
+		print("enter '`' to exit")
+
+		userCommandThread = threading.Thread(target=userCommandThread_function, args=(1,))
+		userCommandThread.start()
+
+		with BleClient_t(BleDeviceName, TxcharUuid, RxcharUuid) as BleClient:
+			while True:
+				message = None
+				if _userCommand == '`':
+					_terminate = True
+					break
+				if _userCommand is not None:
+					_lock.acquire()
+					message = bytes(_userCommand, 'UTF-8')
+					_userCommand = None
+					_lock.release()
+
+				response = BleClient.sendMessageAndWaitForNotification(message=message, responseTimeout=0.1)
+				if response is not None:
+					print(f"{response.decode('utf-8', errors='ignore')}", flush=True)
+	
+		userCommandThread.join()
+	#end of start()
+
+	start(BleDeviceName, RxcharUuid, TxcharUuid)
+	
 ####################### use exxamples #######################
 def test_scan():
 	print(f"{datetime.now()}: start {inspect.currentframe().f_code.co_name}")
@@ -251,7 +300,7 @@ def test_getDevice():
 	bleDevice = BleScan_t().getBleDevice("deviceName", 20)
 	print(f"{datetime.now()}:{bleDevice}")
 
-def test_connect():
+def test_oneShot():
 	print(f"{datetime.now()}: start {inspect.currentframe().f_code.co_name}")
 	BleDeviceName = "deviceName"
 	RxcharUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -262,3 +311,8 @@ def test_connect():
 		response = BleClient.sendMessageAndWaitForNotification(message=message, responseTimeout=30)
 		print(f"{datetime.now()}: {response.hex()}")
 
+def test_UartOverBle():
+	BleDeviceName = "deviceName"
+	RxcharUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+	TxcharUuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+	UART_over_BLE(BleDeviceName, RxcharUuid, TxcharUuid)
